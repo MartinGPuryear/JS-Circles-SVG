@@ -1,0 +1,103 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="validation MVC assignment page" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Martin Puryear" />
+
+    <title>JavaScript Circle</title>
+
+    <script type="text/javascript" src="../../JQuery/v2.0.3/jquery.min.js"></script>
+    
+    <style type="text/css">
+        body {
+            background-color:black;
+        }
+    </style>
+</head>
+
+<body>
+
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <script>
+
+        var mousedown_timestamp = 0;
+
+        var counter = 1;
+        var min_circle_size = 10.0;
+        var max_circle_size = 400.0;
+        var scaling_factor = 0.7;
+        var color_decrement = 256 / (max_circle_size - min_circle_size);
+        var circles = {};
+
+        document.onmousedown = function(mouse_down_evt) 
+        {
+            mousedown_timestamp = mouse_down_evt.timeStamp;
+        };
+        document.onmouseup = function(mouse_up_evt)
+        {
+            var interval = mouse_up_evt.timeStamp - mousedown_timestamp;
+            var radius = Math.floor(Math.pow(interval, scaling_factor));
+            createCircle( mouse_up_evt.clientX, 
+                          mouse_up_evt.clientY, 
+                          radius, 
+                          Math.floor(Math.random()*256), 
+                          Math.floor(Math.random()*256), 
+                          Math.floor(Math.random()*256)
+                        );            
+        };
+
+        function makeSVG(tag, attrs) {
+            var el= document.createElementNS('http://www.w3.org/2000/svg', tag);
+            for (var k in attrs)
+            {
+                el.setAttribute(k, attrs[k]);
+            }
+            return el;
+        }
+
+        function createCircle(cx, cy, r, clrRed, clrGreen, clrBlue)
+        {
+            var circle = makeSVG('circle', 
+                {   cx:     cx,
+                    cy:     cy,
+                    r:      r,
+                    id:     'circle_' + counter,
+                    style:  "fill: rgb("+clrRed+", "+clrGreen+", "+clrBlue+"); "
+                });
+
+            circles['circle_' + counter] = { radius: r, clrR: clrRed, clrG: clrGreen, clrB: clrBlue };
+
+            counter++;
+            document.getElementById('svg').appendChild(circle);
+        }
+
+        function updateCircles()
+        {
+            for(circle in circles)
+            {
+                var el = document.getElementById(circle);
+                circles[circle].clrR = Math.max(0, circles[circle].clrR - color_decrement);
+                circles[circle].clrG = Math.max(0, circles[circle].clrG - color_decrement);
+                circles[circle].clrB = Math.max(0, circles[circle].clrB - color_decrement);
+                circles[circle].radius = circles[circle].radius + 1;
+
+                el.setAttribute("r", circles[circle].radius);
+                el.setAttribute("style", "fill: rgb(" + Math.floor(circles[circle].clrR) + "," + Math.floor(circles[circle].clrG) + "," + Math.floor(circles[circle].clrB) + "); ");
+
+                if(circles[circle].radius > max_circle_size)
+                {
+                    document.getElementById('svg').removeChild(el);
+                    delete circles[circle];
+                }
+            }
+        }
+        //  update the circles every 30 ms
+        setInterval(updateCircles, 30);
+
+    </script>
+
+</body>
+</html>

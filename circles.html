@@ -1,103 +1,163 @@
 <html>
+
+<!-- 
+      A very basic Javascript program that simply uses the
+      time interval that a mouse button is pressed, to 
+      determine the location and radius of a circle to draw,
+      of random RGB color. Subsequently, continue to draw 
+      each circle, gradually expanding and darkening them,
+      until each fades to black at a very large size.
+
+      Demonstrates SVG, color manipulation, mouse handling,
+      and a basic timer.  Not ambitious, but used as a 
+      building block toward the js_balls program. 
+ -->
+
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="description" content="validation MVC assignment page" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="author" content="Martin Puryear" />
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="Javascript circles" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="author" content="Martin Puryear" />
 
-    <title>JavaScript Circle</title>
+  <title>JavaScript Circles</title>
 
-    <script type="text/javascript" src="../../JQuery/v2.0.3/jquery.min.js"></script>
-    
-    <style type="text/css">
-        body {
-            background-color:black;
-        }
-    </style>
+  <style type="text/css">
+    body 
+    {
+        background-color:black;
+        font-family: sans-serif;
+        margin: 0;
+    }
+    p {   
+      color: white;
+      position: absolute;
+      text-align: center; 
+      top: 0;
+      width: 100%;
+    }
+  </style>
 </head>
 
 <body>
 
-    <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  <p>Click to create circles. The longer the click, the larger the radius.</p>
 
-    <script>
+  <script>
 
-        var mousedown_timestamp = 0;
+    MIN_CIRCLE_RADIUS = 8.0;
+    MAX_CIRCLE_RADIUS = 640.0;
+    RADIUS_INTERVAL_SCALING_FACTOR = 0.7;
+    TIMER_INTERVAL_MS = 1;
+    RADIUS_INCREMENT_PIXELS = TIMER_INTERVAL_MS / 5;
+    COLOR_DECREMENT = 96 / (MAX_CIRCLE_RADIUS - MIN_CIRCLE_RADIUS);
 
-        var counter = 1;
-        var min_circle_size = 10.0;
-        var max_circle_size = 400.0;
-        var scaling_factor = 0.7;
-        var color_decrement = 256 / (max_circle_size - min_circle_size);
-        var circles = {};
+    var mousedown_timestamp = 0;
+    var counter = 1;
+    var circles = {};
 
-        document.onmousedown = function(mouse_down_evt) 
+
+    //    Track when we moused-down, to calculate the 'how-long pressed' interval
+    document.onmousedown = function(mouse_down_evt) 
+    {
+      mousedown_timestamp = mouse_down_evt.timeStamp;
+    };
+
+    //    When mouse button goes up, calculate how long we were pressed, determine
+      //  the radius of a circle to be created, and create it. 
+    document.onmouseup = function(mouse_up_evt)
+    {
+      var interval = (mouse_up_evt.timeStamp - mousedown_timestamp) / 4;
+      var radius = Math.floor(Math.pow(interval, RADIUS_INTERVAL_SCALING_FACTOR));
+      createCircle( mouse_up_evt.clientX, 
+                    mouse_up_evt.clientY, 
+                    radius, 
+                    Math.floor(Math.random() * 256), 
+                    Math.floor(Math.random() * 256), 
+                    Math.floor(Math.random() * 256)
+                  );            
+    };
+
+    //    Create an element in SVG.
+    function makeSVG(tag, attrs) {
+      var el= document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (var k in attrs)
+      {
+        el.setAttribute(k, attrs[k]);
+      }
+      return el;
+    }
+
+    //  Create new Circle with the provided coords, radius, color.
+    function createCircle(cx, cy, r, clrRed, clrGreen, clrBlue)
+    {
+      var circle = makeSVG('circle', 
+          { 
+            cx:     cx,
+            cy:     cy,
+            r:      r,
+            id:     'circle_' + counter,
+            style:  "fill: rgb("+clrRed+", "+clrGreen+", "+clrBlue+"); "
+          });
+
+      circles['circle_' + counter] = { radius: r, clrR: clrRed, clrG: clrGreen, clrB: clrBlue };
+
+      counter++;
+      document.getElementById('svg').appendChild(circle);
+    }
+
+    //    Upon each timer tick, update each circle's color and size.
+      //  Also, iterate from the back to the front: if a circle has 
+      //  faded to black, delete it from SVG and from our internal
+      //  data structure.  As soon as we find one that has not faded
+      //  to black, keep fading/expanding the ones in front of it
+      //  (even those that are already pure black). 
+      //  Hence, all circles get darkened and expanded, but only the
+      //  backmost ones get deleted.  
+    function updateCircles()
+    {
+      for (circle in circles)
+      {
+        if (circles[circle] == null)
         {
-            mousedown_timestamp = mouse_down_evt.timeStamp;
-        };
-        document.onmouseup = function(mouse_up_evt)
-        {
-            var interval = mouse_up_evt.timeStamp - mousedown_timestamp;
-            var radius = Math.floor(Math.pow(interval, scaling_factor));
-            createCircle( mouse_up_evt.clientX, 
-                          mouse_up_evt.clientY, 
-                          radius, 
-                          Math.floor(Math.random()*256), 
-                          Math.floor(Math.random()*256), 
-                          Math.floor(Math.random()*256)
-                        );            
-        };
-
-        function makeSVG(tag, attrs) {
-            var el= document.createElementNS('http://www.w3.org/2000/svg', tag);
-            for (var k in attrs)
-            {
-                el.setAttribute(k, attrs[k]);
-            }
-            return el;
+          continue;
         }
+        var el = document.getElementById(circle);
+        circles[circle].clrR = Math.max(0, circles[circle].clrR - COLOR_DECREMENT);
+        circles[circle].clrG = Math.max(0, circles[circle].clrG - COLOR_DECREMENT);
+        circles[circle].clrB = Math.max(0, circles[circle].clrB - COLOR_DECREMENT);
+        circles[circle].radius = circles[circle].radius + RADIUS_INCREMENT_PIXELS;
 
-        function createCircle(cx, cy, r, clrRed, clrGreen, clrBlue)
+        el.setAttribute("r", parseInt(circles[circle].radius));
+        el.setAttribute("style", "fill: rgb(" + Math.floor(circles[circle].clrR) + "," + Math.floor(circles[circle].clrG) + "," + Math.floor(circles[circle].clrB) + "); ");
+      }
+
+      for (circle in circles)
+      {
+        if (circles[circle] == null)
         {
-            var circle = makeSVG('circle', 
-                {   cx:     cx,
-                    cy:     cy,
-                    r:      r,
-                    id:     'circle_' + counter,
-                    style:  "fill: rgb("+clrRed+", "+clrGreen+", "+clrBlue+"); "
-                });
-
-            circles['circle_' + counter] = { radius: r, clrR: clrRed, clrG: clrGreen, clrB: clrBlue };
-
-            counter++;
-            document.getElementById('svg').appendChild(circle);
+          continue;
         }
-
-        function updateCircles()
+        if (! (circles[circle].clrR || circles[circle].clrG || circles[circle].clrB))
         {
-            for(circle in circles)
-            {
-                var el = document.getElementById(circle);
-                circles[circle].clrR = Math.max(0, circles[circle].clrR - color_decrement);
-                circles[circle].clrG = Math.max(0, circles[circle].clrG - color_decrement);
-                circles[circle].clrB = Math.max(0, circles[circle].clrB - color_decrement);
-                circles[circle].radius = circles[circle].radius + 1;
-
-                el.setAttribute("r", circles[circle].radius);
-                el.setAttribute("style", "fill: rgb(" + Math.floor(circles[circle].clrR) + "," + Math.floor(circles[circle].clrG) + "," + Math.floor(circles[circle].clrB) + "); ");
-
-                if(circles[circle].radius > max_circle_size)
-                {
-                    document.getElementById('svg').removeChild(el);
-                    delete circles[circle];
-                }
-            }
+          var el = document.getElementById(circle);
+          document.getElementById('svg').removeChild(el);
+          delete circles[circle];
+          circles[circle] = null;
         }
-        //  update the circles every 30 ms
-        setInterval(updateCircles, 30);
+        else
+        { 
+          break;
+        }
+      }
+    }
 
-    </script>
+    //  update the circles every 'x' ms
+    //  15 ms should be more frequent than the video refresh, 
+    setInterval(updateCircles, TIMER_INTERVAL_MS);
+
+  </script>
 
 </body>
 </html>
